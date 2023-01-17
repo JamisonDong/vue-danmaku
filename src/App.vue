@@ -3,11 +3,24 @@
     <!-- 容器slot -->
     <div></div>
     <!-- 弹幕slot -->
-    <template v-slot:dm="{ danmu, index }">
-      <div class="danmu-item">
+    <template v-slot:dm="{ danmu }">
+      <div class="danmu-item danmu-specify" v-if="danmu.name === '你'">
         <img class="img" :src="danmu.avatar" />
-        <span>{{ index }}{{ danmu.name }}：</span>
+        <span>{{ danmu.name }}：</span>
+        <span :style="{color:danmu.color}">{{ danmu.text }}</span>
+        <div class="option">
+          <Like :like="danmu.like" />
+          <Report />
+        </div>
+      </div>
+      <div class="danmu-item" v-else>
+        <img class="img" :src="danmu.avatar" />
+        <span>{{ danmu.name }}：</span>
         <span>{{ danmu.text }}</span>
+        <div class="option">
+          <Like :like="danmu.like" />
+          <Report />
+        </div>
       </div>
     </template>
   </vue-danmaku>
@@ -60,6 +73,7 @@
       <p>
         发送：
         <input class="ipt" type="text" v-model="danmuMsg" />
+        <input class="color" type="color" v-model="danmuColor" />
         <button class="btn" @click="addDanmu">发送</button>
       </p>
     </div>
@@ -96,16 +110,21 @@
 import { defineComponent, onMounted, onUnmounted, reactive, ref } from 'vue'
 import { danmus as danmusData, getDanmuData } from './assets/danmu.js'
 import VueDanmaku from './lib/Danmaku.vue'
+import Like from './components/like/index.vue'
+import Report from './components/report/index.vue'
 
 export default defineComponent({
   components: {
     VueDanmaku,
+    Like,
+    Report,
   },
   props: {},
   setup(props) {
     const danmaku = ref<any>(null)
     const danmus = ref<any[]>(getDanmuData())
     const danmuMsg = ref<string>('')
+    const danmuColor = ref<string>('')
     let timer: number = 0
     const config = reactive({
       channels: 5, // 轨道数量，为0则弹幕轨道数会撑满容器
@@ -117,6 +136,7 @@ export default defineComponent({
       right: 0, // 同一轨道弹幕的水平间距
       debounce: 100, // 弹幕刷新频率（多少毫秒插入一条弹幕，建议不小于50）
       randomChannel: true, // 随机弹幕轨道
+      extraStyle: '#fff', //弹幕额外样式
     })
 
     onMounted(() => {
@@ -179,12 +199,18 @@ export default defineComponent({
       config.channels += val
     }
     function addDanmu() {
+      console.log(danmuColor.value);
       if (!danmuMsg.value) return
+      if(danmuColor.value){
+        config.extraStyle = danmuColor.value
+      }
       const _danmuMsg = config.useSlot
         ? {
             avatar: 'https://i.loli.net/2021/01/17/xpwbm3jKytfaNOD.jpg',
             name: '你',
             text: danmuMsg.value,
+            like: 0,
+            color: config.extraStyle
           }
         : danmuMsg.value
       danmaku.value.add(_danmuMsg)
@@ -196,7 +222,7 @@ export default defineComponent({
       danmus,
       config,
       danmuMsg,
-
+      danmuColor,
       play,
       switchSlot,
       speedsChange,
@@ -226,17 +252,46 @@ body {
     height: 100%;
     z-index: 0;
     background: linear-gradient(45deg, #5ac381, #20568b);
+    :hover {
+        z-index: 10;
+        /* box-shadow: 2px 2px 5px #000; */
+        border-radius: 10px;
+        border: 1px solid #8d8f8b;
+      }
+    
     .danmu-item {
       display: flex;
+      flex-direction: row;
       align-items: center;
+      justify-content: center;
+      cursor: pointer;
       .img {
         height: 25px;
         width: 25px;
         border-radius: 50%;
         margin-right: 5px;
       }
+      .option{
+        display: inline-flex;
+        opacity: 0;
+      }
+      //TODO：点赞 举报交互
+      :hover {
+        border-radius: 0px;
+        border: 0px;
+      }
+      
+    }
+    .danmu-specify {
+        z-index: 10;
+        /* box-shadow: 2px 2px 5px #000; */
+        border-radius: 10px;
+        border: 1px solid #999af4;
     }
   }
+  .danmu-item:hover .option {
+      opacity: 1;
+    }
   .main {
     position: absolute;
     z-index: 1;
